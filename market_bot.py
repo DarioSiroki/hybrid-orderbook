@@ -3,7 +3,7 @@
 import spade
 import time
 import asyncio
-from konfiguracija import IP_PROSODY, MARKET_BOT_MAINTAIN_VALUE, TRZISTE, MARKET_BOT_PROFIT_MARGIN, MARKET_BOT_MIN_PROFIT_MARGIN
+from konfiguracija import IP_PROSODY, MARKET_BOT_MAINTAIN_VALUE, TRZISTE, MARKET_BOT_PROFIT_MARGIN, MARKET_BOT_MIN_PROFIT_MARGIN, MARKET_BOT_MAX_PROFIT_MARGIN
 import json
 import uuid
 import random
@@ -29,13 +29,14 @@ class MarketBot(spade.agent.Agent):
         za_uklonit = []
         # primjer: zeli se profit od 300 USDT
         minimalni_profit = MARKET_BOT_MIN_PROFIT_MARGIN * cijena
+        maksimalni_profit = MARKET_BOT_MAX_PROFIT_MARGIN * cijena
         for n in self.sell_narudzbe:
             # order["price"] je 16 000, a trenutna cijena je 15 800
             # znaci pokusava se prodat za 200 USDT vise od trenutne cijene
             # mi zelimo barem 300 (to je minimalni profit), pa ce se ova narudzba
             # otkazati
             trenutni_profit = n["price"] - cijena
-            if trenutni_profit < minimalni_profit:
+            if trenutni_profit < minimalni_profit or trenutni_profit > maksimalni_profit:
                 za_uklonit.append(n)
         return za_uklonit
 
@@ -43,19 +44,20 @@ class MarketBot(spade.agent.Agent):
         za_uklonit = []
         # primjer: zeli se profit od 300 USDT
         minimalni_profit = MARKET_BOT_MIN_PROFIT_MARGIN * cijena
+        maksimalni_profit = MARKET_BOT_MAX_PROFIT_MARGIN * cijena
         for n in self.buy_narudzbe:
             # order["price"] je 16 000, a trenutna globalna cijena je 16 200
             # znaci pokusava se kupit za 200 USDT manje od trenutne cijene na mjenjacnici
             # mi zelimo kupiti po profitu od barem 300 USDT (to je minimalni profit),
             # pa ce se ova narudzba otkazati
             trenutni_profit = cijena - n["price"]
-            if trenutni_profit < minimalni_profit:
+            if trenutni_profit < minimalni_profit or trenutni_profit > maksimalni_profit:
                 za_uklonit.append(n)
         return za_uklonit
 
     class OdrzavajLikvidnost(spade.behaviour.PeriodicBehaviour):
         async def run(self):
-            p = await self.receive(timeout=2)
+            p = await self.receive(timeout=1)
             if p:
                 cijena = json.loads(p.body)["cijena"]
 
